@@ -1,0 +1,107 @@
+[
+  {
+    "id": "kafka-001",
+    "connector": "ballerinax/kafka",
+    "question": "How do I use the Kafka consumer as a listener?",
+    "expected_keywords": ["Listener", "topics", "poll", "onConsumerRecord"],
+    "expected_source_section": "Listener"
+  },
+  {
+    "id": "kafka-002",
+    "connector": "ballerinax/kafka",
+    "question": "How do I create a Kafka producer and send messages?",
+    "expected_keywords": ["producer", "sendMessage", "ProducerRecord"],
+    "expected_source_section": "Consumer and producer"
+  },
+  {
+    "id": "kafka-003",
+    "connector": "ballerinax/kafka",
+    "question": "How do I commit offsets manually in Kafka?",
+    "expected_keywords": ["commit", "commitOffset", "offset"],
+    "expected_source_section": "Listener"
+  },
+  {
+    "id": "rabbitmq-001",
+    "connector": "ballerinax/rabbitmq",
+    "question": "How do I publish a message to a RabbitMQ queue?",
+    "expected_keywords": ["publishMessage", "routingKey", "rabbitmqClient"],
+    "expected_source_section": "Basic usage"
+  },
+  {
+    "id": "rabbitmq-002",
+    "connector": "ballerinax/rabbitmq",
+    "question": "How do I manually acknowledge a RabbitMQ message?",
+    "expected_keywords": ["basicAck", "autoAck", "Caller"],
+    "expected_source_section": "Advanced usage"
+  },
+  {
+    "id": "rabbitmq-003",
+    "connector": "ballerinax/rabbitmq",
+    "question": "How do I set up the connection to RabbitMQ?",
+    "expected_keywords": ["DEFAULT_HOST", "DEFAULT_PORT", "Listener"],
+    "expected_source_section": "Basic usage"
+  },
+  {
+    "id": "rabbitmq-004",
+    "connector": "ballerinax/rabbitmq",
+    "question": "How do I negatively acknowledge a RabbitMQ message?",
+    "expected_keywords": ["basicNack", "requeue"],
+    "expected_source_section": "Advanced usage"
+  },
+  {
+    "id": "mysql-001",
+    "connector": "ballerinax/mysql",
+    "question": "How do I create a MySQL client connection in Ballerina?",
+    "expected_keywords": ["mysql:Client", "user", "password"],
+    "expected_source_section": "Client"
+  },
+  {
+    "id": "mysql-002",
+    "connector": "ballerinax/mysql",
+    "question": "How do I execute a parameterized SQL query in MySQL?",
+    "expected_keywords": ["parameterizedQuery", "query", "sql:ParameterizedQuery"],
+    "expected_source_section": "Database operations"
+  },
+  {
+    "id": "mysql-003",
+    "connector": "ballerinax/mysql",
+    "question": "How do I configure a connection pool for MySQL?",
+    "expected_keywords": ["connectionPool", "maxOpenConnections"],
+    "expected_source_section": "Client"
+  },
+  {
+    "id": "mysql-004",
+    "connector": "ballerinax/mysql",
+    "question": "How do I insert data into a MySQL table?",
+    "expected_keywords": ["execute", "INSERT", "affectedRowCount"],
+    "expected_source_section": "Database operations"
+  },
+  {
+    "id": "jdbc-001",
+    "connector": "ballerinax/java.jdbc",
+    "question": "How do I connect to a database using the JDBC connector?",
+    "expected_keywords": ["jdbc:Client", "url", "connectionUrl"],
+    "expected_source_section": "Client"
+  },
+  {
+    "id": "jdbc-002",
+    "connector": "ballerinax/java.jdbc",
+    "question": "How do I execute database operations with JDBC?",
+    "expected_keywords": ["execute", "query", "Database operations"],
+    "expected_source_section": "Database operations"
+  },
+  {
+    "id": "twilio-001",
+    "connector": "ballerinax/twilio",
+    "question": "How do I send an SMS message using the Twilio connector?",
+    "expected_keywords": ["sendSms", "sendMessage", "twilioClient"],
+    "expected_source_section": "Step 3 - Invoke the connector operation"
+  },
+  {
+    "id": "twilio-002",
+    "connector": "ballerinax/twilio",
+    "question": "How do I initialize the Twilio connector client?",
+    "expected_keywords": ["twilio:Client", "accountSId", "authToken", "ConnectionConfig"],
+    "expected_source_section": "Step 2 - Create a new connector instance"
+  }
+]
