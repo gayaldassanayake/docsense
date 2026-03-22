@@ -22,6 +22,7 @@ def retrieve(
     query: str,
     top_k: int | None = None,
     connector_filter: str | None = None,
+    mode: str | None = None,
 ) -> list[RetrievedChunk]:
     """
     Embed the query and return the top-k most relevant chunks.
@@ -31,13 +32,15 @@ def retrieve(
         top_k:            Number of chunks to return (defaults to config value).
         connector_filter: If given, restrict results to this connector
                           (e.g. "ballerinax/kafka").
+        mode:             Retrieval mode override: "dense", "sparse", or "hybrid".
+                          Defaults to settings.retrieval_mode.
 
     Returns:
         List of RetrievedChunk objects ordered by descending similarity score.
     """
     top_k = top_k or settings.default_top_k
 
-    raw = search(query, top_k=top_k, connector_filter=connector_filter)
+    raw = search(query, top_k=top_k, connector_filter=connector_filter, mode=mode)
 
     return [
         RetrievedChunk(
