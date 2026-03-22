@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     default_top_k: int = 5
     chunk_size_tokens: int = 400
     chunk_overlap_tokens: int = 50
-    chunking_strategy: str = "heading"
+    chunking_strategy: str = "hierarchical"
 
     model_config = {"env_file": ".env"}
 

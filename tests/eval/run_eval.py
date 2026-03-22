@@ -13,6 +13,7 @@ Usage:
 
 import argparse
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -39,8 +40,26 @@ def run_eval(top_k: int = 5, skip_generate: bool = False) -> None:
         # --- Retrieval ---
         chunks = retrieve(question, top_k=top_k, connector_filter=connector)
         retrieved_sections = [c.section.lower() for c in chunks]
-        retrieval_hit = any(expected_section in s for s in retrieved_sections)
         top_score = chunks[0].score if chunks else 0.0
+
+        # Detect fixed chunking by checking if section names are all "chunk-N".
+        # Fixed chunks have no heading metadata, so fall back to checking whether
+        # expected keywords appear in the retrieved chunk text instead.
+        _fixed_pattern = re.compile(r"^chunk-\d+$")
+        using_fixed_chunks = all(_fixed_pattern.match(s) for s in retrieved_sections)
+
+        if using_fixed_chunks:
+            # Retrieval hit = at least one retrieved chunk contains an expected keyword
+            retrieval_hit = any(
+                kw.lower() in c.text.lower()
+                for c in chunks
+                for kw in expected_keywords
+            )
+            retrieval_method = "keyword-in-text"
+        else:
+            # Retrieval hit = expected section name found in retrieved chunk sections
+            retrieval_hit = any(expected_section in s for s in retrieved_sections)
+            retrieval_method = "section-name"
 
         # --- Generation ---
         keyword_hit = None
@@ -56,6 +75,7 @@ def run_eval(top_k: int = 5, skip_generate: bool = False) -> None:
             "connector": connector,
             "question": question,
             "retrieval_hit": retrieval_hit,
+            "retrieval_method": retrieval_method,
             "top_score": top_score,
             "keyword_hit": keyword_hit,
             "missing_keywords": missing_keywords,
@@ -66,10 +86,14 @@ def run_eval(top_k: int = 5, skip_generate: bool = False) -> None:
         # Live progress
         r_mark = "✓" if retrieval_hit else "✗"
         k_mark = ("✓" if keyword_hit else "✗") if keyword_hit is not None else "-"
-        print(f"[{qid}] retrieval={r_mark}  keywords={k_mark}  score={top_score:.3f}")
+        print(f"[{qid}] retrieval={r_mark}  keywords={k_mark}  score={top_score:.3f}  [{retrieval_method}]")
         if not retrieval_hit:
-            print(f"  expected section: {q['expected_source_section']!r}")
-            print(f"  got sections:     {[c.section for c in chunks[:3]]}")
+            if retrieval_method == "section-name":
+                print(f"  expected section: {q['expected_source_section']!r}")
+                print(f"  got sections:     {[c.section for c in chunks[:3]]}")
+            else:
+                print(f"  expected keywords in chunks: {expected_keywords}")
+                print(f"  got sections:                {[c.section for c in chunks[:3]]}")
         if missing_keywords:
             print(f"  missing keywords: {missing_keywords}")
 

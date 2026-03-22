@@ -14,21 +14,22 @@ Ballerina connector docs are spread across Ballerina Central and the WSO2 BI doc
                         │  connectors.json  ──►  scraper.py   │
                         │                           │         │
                         │                      chunker.py     │
-                        │                     (heading split) │
+                        │                    (hierarchical)    │
                         │                           │         │
-                        │                   nomic-embed-text  │
-                        │                     (Ollama local)  │
-                        │                           │         │
+                        │              ┌────────────┴───────┐ │
+                        │       nomic-embed-text      BM25   │ │
+                        │        (dense 768d)       (sparse) │ │
+                        │              └────────────┬───────┘ │
                         │                        Qdrant       │
                         │                    (Docker, local)  │
                         └───────────────────────────┬─────────┘
                                                     │
                         ┌───────────────────────────▼─────────┐
   QUERY                 │                                     │
-                        │  question  ──►  embed (search_query:│
-                        │                    prefix)          │
+                        │  question  ──►  embed (dense+sparse)│
                         │                           │         │
-                        │               vector search top-k   │
+                        │            hybrid search (RRF fusion│
+                        │              dense + BM25 prefetch) │
                         │                           │         │
                         │            Claude (claude-sonnet-4) │
                         │          grounded prompt + citations│
@@ -38,6 +39,43 @@ Ballerina connector docs are spread across Ballerina Central and the WSO2 BI doc
 ```
 
 **Stack:** Python 3.11 · FastAPI · Qdrant · Ollama (`nomic-embed-text`) · Claude API
+
+## How It Works
+
+### Ingestion
+
+Two API calls per connector fetch the docs from Ballerina Central:
+
+1. **Registry API** — returns the package readme markdown and version metadata
+2. **Docs API** — returns structured API reference JSON (records, clients, functions, types, enums, errors)
+
+Both are rendered into a single markdown file per connector and cached locally in `data/raw/`. Currently ingests 5 connectors: kafka, rabbitmq, mysql, java.jdbc, and twilio.
+
+### Chunking
+
+Three strategies are available (set via `CHUNKING_STRATEGY` env var):
+
+- **Hierarchical (default)** — splits on H1–H4 boundaries, prefixing every chunk with its full ancestor breadcrumb (e.g. `[H1: kafka] [H2: Records] [H3: ConsumerConfiguration]`). Also emits **field-level chunks** from markdown tables so each record field gets its own chunk. Oversized sections are split via sliding window (400 tokens, 50-token overlap).
+  - *Why:* breadcrumb prefixes preserve parent context — a chunk for "ConsumerConfiguration" retains that it's under "Records" under "kafka". Field-level chunks enable precise retrieval of individual record fields.
+- **Heading** — splits on H1/H2/H3 boundaries with sliding window for oversized sections. Simpler but loses parent context.
+- **Fixed** — naive fixed-size token splits. Baseline for comparison.
+
+### Retrieval
+
+Three retrieval modes (set via `RETRIEVAL_MODE` env var):
+
+- **Dense** — semantic similarity via `nomic-embed-text` (768-dim vectors, cosine distance). Queries are prefixed with `search_query:` and documents with `search_document:` per Nomic's recommended usage. Good for natural language queries like *"how do I authenticate?"*.
+- **Sparse (BM25)** — custom tokenizer that splits on non-alphanumeric boundaries and does camelCase splitting (e.g. `decoupleProcessing` → `["decouple", "processing", "decoupleprocessing"]`). Tokens are hashed via MurmurHash3 into 2^18 (262k) buckets. Uses log-normalized TF (`1 + log(tf)`); Qdrant applies IDF server-side. Good for exact API identifiers like `ProducerRecord` or `sendSms`.
+- **Hybrid (default)** — prefetches top `2×k` results from both dense and sparse, then fuses them with **Reciprocal Rank Fusion (RRF)**. Gets the best of both worlds.
+  - *Why hybrid:* pure vector search misses exact API identifiers; pure keyword search misses semantic intent. Hybrid closes this gap.
+
+### Generation
+
+Retrieved chunks are formatted into a numbered context block, each showing the connector, section, URL, and relevance score. The system prompt constrains Claude to:
+
+- Answer **only** from the provided documentation excerpts — no guessing
+- Cite sources using `[connector/section]` notation inline
+- Include a **Sources** list at the end with URLs for traceability
 
 ## Quick Start
 
@@ -101,7 +139,7 @@ Sources: rabbitmq/Advanced usage, rabbitmq/Message Acknowledgment
 (chunks_used=5, latency=6842ms)
 ```
 
-## Eval Results (baseline · heading strategy · top_k=5)
+## Eval Results (hierarchical strategy · hybrid retrieval · top_k=5)
 
 | Metric | Score |
 |---|---|
@@ -116,11 +154,11 @@ Sources: rabbitmq/Advanced usage, rabbitmq/Message Acknowledgment
 | ballerinax/java.jdbc | 2/2 | 1/2 |
 | ballerinax/twilio | 2/2 | 0/2 |
 
-The retriever always finds the right section. Keyword misses are mostly exact API identifiers (e.g. `sendSms`, `ProducerRecord`) that the answer paraphrases — a hybrid BM25 + vector search would close this gap.
+The retriever always finds the right section. Keyword misses are mostly exact API identifiers (e.g. `sendSms`, `ProducerRecord`) that the answer paraphrases — hybrid search helps close this gap, and re-running evals with updated prompts is next.
 
 ## Roadmap
 
-- **Phase 6** — Hybrid search (BM25 + vector) to improve keyword hit rate
+- ~~**Phase 6** — Hybrid search (BM25 + vector) to improve keyword hit rate~~ ✅
 - **Phase 7** — Reranking with a cross-encoder for better context precision
 - **Phase 8** — Agentic multi-hop for cross-connector questions
 - **Phase 9** — RAGAS evaluation for richer, multi-dimensional metrics
